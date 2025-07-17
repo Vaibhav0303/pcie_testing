@@ -6,7 +6,6 @@
 #include <stdexcept>
 #include <thread>
 #include <chrono>
-#include <regex>
 #include <array>
 
 DebugfsHandler::DebugfsHandler() {
@@ -111,33 +110,23 @@ std::map<std::string, std::string> DebugfsHandler::parseStatus(const std::string
         
         std::string key, value;
         
-        // Handle different patterns:
-        // Pattern 1: "key is value" or "key is value"
+        // Priority 1: Look for " is " separator (with spaces)
         size_t isPos = content.find(" is ");
         if (isPos != std::string::npos) {
             key = content.substr(0, isPos);
             value = content.substr(isPos + 4); // 4 = length of " is "
         }
-        // Pattern 2: Look for other common separators like ":"
+        // Priority 2: Look for ":" separator
         else {
             size_t colonPos = content.find(':');
             if (colonPos != std::string::npos) {
                 key = content.substr(0, colonPos);
                 value = content.substr(colonPos + 1);
             }
-            // Pattern 3: If no clear separator, try to split on last space before a value-like token
             else {
-                // Look for patterns like "key 0x123", "key 123", "key enable/disable"
-                std::regex valuePattern(R"(^(.+?)\s+((?:0x[0-9a-fA-F]+|\d+|enable|disable|enumerated|[A-Z]+\d*))$)");
-                std::smatch match;
-                if (std::regex_match(content, match, valuePattern)) {
-                    key = match[1].str();
-                    value = match[2].str();
-                } else {
-                    // Fallback: treat the entire content as key with empty value
-                    key = content;
-                    value = "";
-                }
+                // No separator found, treat entire content as key with empty value
+                key = content;
+                value = "";
             }
         }
         
