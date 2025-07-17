@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <thread>
 #include <chrono>
+#include <regex>
+#include <array>
 
 DebugfsHandler::DebugfsHandler() {
     // Clear dmesg buffer at initialization
@@ -87,25 +89,65 @@ std::map<std::string, std::string> DebugfsHandler::parseStatus(const std::string
     std::string line;
     
     while (std::getline(stream, line)) {
-        // Skip lines that don't contain status information
-        if (line.find("msm_pcie") == std::string::npos) {
+        // Skip lines that don't contain PCIe status information
+        if (line.find("msm_pcie_show_status:") == std::string::npos) {
             continue;
         }
         
-        // Extract key-value pairs from the status line
-        // This is a basic implementation - you might need to adjust the parsing
-        // based on your actual status format
-        size_t colonPos = line.find(':');
-        if (colonPos != std::string::npos) {
-            std::string key = line.substr(0, colonPos);
-            std::string value = line.substr(colonPos + 1);
-            
-            // Trim whitespace
-            key.erase(0, key.find_first_not_of(" \t"));
-            key.erase(key.find_last_not_of(" \t") + 1);
-            value.erase(0, value.find_first_not_of(" \t"));
-            value.erase(value.find_last_not_of(" \t") + 1);
-            
+        // Extract the part after "msm_pcie_show_status:"
+        size_t prefixPos = line.find("msm_pcie_show_status:");
+        if (prefixPos == std::string::npos) {
+            continue;
+        }
+        
+        std::string content = line.substr(prefixPos + 21); // 21 = length of "msm_pcie_show_status:"
+        
+        // Trim leading whitespace
+        content.erase(0, content.find_first_not_of(" \t"));
+        
+        if (content.empty()) {
+            continue;
+        }
+        
+        std::string key, value;
+        
+        // Handle different patterns:
+        // Pattern 1: "key is value" or "key is value"
+        size_t isPos = content.find(" is ");
+        if (isPos != std::string::npos) {
+            key = content.substr(0, isPos);
+            value = content.substr(isPos + 4); // 4 = length of " is "
+        }
+        // Pattern 2: Look for other common separators like ":"
+        else {
+            size_t colonPos = content.find(':');
+            if (colonPos != std::string::npos) {
+                key = content.substr(0, colonPos);
+                value = content.substr(colonPos + 1);
+            }
+            // Pattern 3: If no clear separator, try to split on last space before a value-like token
+            else {
+                // Look for patterns like "key 0x123", "key 123", "key enable/disable"
+                std::regex valuePattern(R"(^(.+?)\s+((?:0x[0-9a-fA-F]+|\d+|enable|disable|enumerated|[A-Z]+\d*))$)");
+                std::smatch match;
+                if (std::regex_match(content, match, valuePattern)) {
+                    key = match[1].str();
+                    value = match[2].str();
+                } else {
+                    // Fallback: treat the entire content as key with empty value
+                    key = content;
+                    value = "";
+                }
+            }
+        }
+        
+        // Trim whitespace from key and value
+        key.erase(0, key.find_first_not_of(" \t"));
+        key.erase(key.find_last_not_of(" \t") + 1);
+        value.erase(0, value.find_first_not_of(" \t"));
+        value.erase(value.find_last_not_of(" \t") + 1);
+        
+        if (!key.empty()) {
             statusMap[key] = value;
         }
     }
