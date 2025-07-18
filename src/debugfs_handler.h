@@ -23,6 +23,7 @@ public:
     
     // Status handling
     void captureBaselineStatus();
+    void captureCurrentAsBaseline();
     void saveStatus(const std::string& filename);
     std::map<std::string, std::string> compareWithBaseline();
     
