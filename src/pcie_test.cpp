@@ -3,9 +3,8 @@
 #include <chrono>
 
 void PCIeTest::SetUp() {
-    // Get initial status
-    debugfs.captureBaselineStatus();
-    saveStatusToFile(BASELINE_STATUS_FILE);
+    // Initialize the debugfs handler
+    // No need to capture baseline here - each test will capture its own
 }
 
 void PCIeTest::TearDown() {
@@ -14,10 +13,13 @@ void PCIeTest::TearDown() {
 }
 
 void PCIeTest::verifyNodeEffect(const std::string& node, int value, const std::string& expectedKey) {
+    // Capture fresh baseline right before this test by writing to case 0 node
+    debugfs.captureCurrentAsBaseline();
+    
     // Write to the node
     debugfs.writeToNode(node, value);
     
-    // Compare with baseline
+    // Compare with the fresh baseline
     auto differences = debugfs.compareWithBaseline();
     
     // Check if the expected key exists in the differences

@@ -42,6 +42,17 @@ void DebugfsHandler::captureBaselineStatus() {
     baselineStatus = getDmesgOutput("msm_pcie");
 }
 
+void DebugfsHandler::captureCurrentAsBaseline() {
+    // Clear dmesg before capturing fresh baseline
+    clearDmesg();
+    
+    // Write 0 to case node to get current status as new baseline
+    writeToNode(NODE_CASE, 0);
+    
+    // Get and store the current status as new baseline
+    baselineStatus = getDmesgOutput("msm_pcie");
+}
+
 void DebugfsHandler::saveStatus(const std::string& filename) {
     // Write 0 to case node to get current status
     writeToNode(NODE_CASE, 0);
