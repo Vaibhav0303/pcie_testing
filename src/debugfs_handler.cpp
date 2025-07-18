@@ -88,6 +88,13 @@ std::map<std::string, std::string> DebugfsHandler::parseStatus(const std::string
     std::string line;
     
     while (std::getline(stream, line)) {
+        // Remove "msm_pcie_show_status:" prefix if it exists
+        const std::string prefix = "msm_pcie_show_status:";
+        size_t prefixPos = line.find(prefix);
+        if (prefixPos != std::string::npos) {
+            line = line.substr(prefixPos + prefix.length());
+        }
+        
         std::string key, value;
 
         // First try to split by "is"
